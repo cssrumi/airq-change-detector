@@ -1,0 +1,66 @@
+change-detector:
+  pull:
+    cron: 0 0 * * * ?
+  bootstrap:
+    sinceLast: 3
+    timeUnit: DAYS
+  redis:
+    expire:
+      in: 72
+      timeUnit: HOURS
+
+quarkus:
+  application:
+    name: airq-change-detector
+  datasource:
+    db-kind: postgresql
+    username: postgres
+    jdbc:
+      url: jdbc:postgresql://10.1.1.50:5432/warehouse
+    reactive:
+      url: postgresql://10.1.1.50:5432/warehouse
+  redis:
+    password:
+  vertx:
+    prefer-native-transport: true
+
+mp:
+  messaging:
+    outgoing:
+      gios-m-created:
+        connector: smallrye-kafka
+        topic: gios.m.created
+        value:
+          serializer: org.apache.kafka.common.serialization.StringSerializer
+      gios-m-updated:
+        connector: smallrye-kafka
+        topic: gios.m.updated
+        value:
+          serializer: org.apache.kafka.common.serialization.StringSerializer
+      gios-m-deleted:
+        connector: smallrye-kafka
+        topic: gios.m.deleted
+        value:
+          serializer: org.apache.kafka.common.serialization.StringSerializer
+
+kafka:
+  group:
+    id: airq-change-detector
+  bootstrap:
+    servers: 10.1.1.51:9092
+
+"%dev":
+  change-detector:
+    pull:
+      cron: 0 0 * * * ?
+    redis:
+      expire:
+        in: 72
+        timeUnit: HOURS
+
+  quarkus:
+    redis:
+      hosts: localhost:6379
+
+  kafka:
+    servers: localhost:9092
