@@ -2,6 +2,7 @@ package pl.airq.detector.change.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.redis.client.reactive.ReactiveRedisClient;
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Produces;
@@ -17,8 +18,8 @@ import pl.airq.detector.change.store.InstallationRedisLayer;
 @Dependent
 public class StoreProvider {
 
-    private static final String EXPIRE_IN_CONFIG = "change-detector.redis.expire.in";
-    private static final String EXPIRE_TIME_UNIT_CONFIG = "change-detector.redis.expire.timeUnit";
+    private static final String EXPIRE_IN_CONFIG = "change-detector.store.expire.in";
+    private static final String EXPIRE_TIME_UNIT_CONFIG = "change-detector.store.expire.timeUnit";
 
     @Singleton
     @Produces
@@ -26,7 +27,7 @@ public class StoreProvider {
                                                   @ConfigProperty(name = EXPIRE_IN_CONFIG) Long expireIn,
                                                   @ConfigProperty(name = EXPIRE_TIME_UNIT_CONFIG) ChronoUnit expireTimeUnit) {
         final InstallationRedisLayer redisLayer = new InstallationRedisLayer(redis, bus, mapper, expireIn, expireTimeUnit);
-        return new StoreBuilder<TSFKey, Installation>().withInMemoryAtTop()
+        return new StoreBuilder<TSFKey, Installation>().withGuavaCacheOnTop(Duration.of(expireIn, expireTimeUnit))
                                                        .withLayer(redisLayer)
                                                        .build();
     }

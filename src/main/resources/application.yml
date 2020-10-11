@@ -1,10 +1,14 @@
 change-detector:
-  pull:
-    cron: 0 0 * * * ?
-  bootstrap:
+  invoke:
+    cron: 0 */10 * ? * *
+  loader:
+    pullFromDb: false
+  detect:
     sinceLast: 3
     timeUnit: DAYS
-  redis:
+    maxProcessAwait: 5
+    maxProcessAwaitTimeUnit: MINUTES
+  store:
     expire:
       in: 72
       timeUnit: HOURS
@@ -53,7 +57,7 @@ kafka:
   change-detector:
     pull:
       cron: 0 0 * * * ?
-    redis:
+    store:
       expire:
         in: 72
         timeUnit: HOURS
@@ -63,4 +67,5 @@ kafka:
       hosts: localhost:6379
 
   kafka:
-    servers: localhost:9092
+    bootstrap:
+      servers: localhost:9092
