@@ -10,23 +10,18 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.airq.common.domain.gios.installation.Installation;
-import pl.airq.common.domain.gios.installation.InstallationQuery;
+import pl.airq.common.domain.gios.Installation;
+import pl.airq.common.domain.gios.InstallationQuery;
 import pl.airq.common.store.Store;
 import pl.airq.common.store.key.TSFKey;
+import pl.airq.detector.change.config.ChangeDetectorProperties;
 
 @ApplicationScoped
 class InstallationStoreLoader {
 
     private static final String TIME_UNIT_VALIDATION_FAILED = "TimeUnit accept only HOURS and DAYS";
-    private static final String SINCE_LAST_VALIDATION_FAILED = "SinceLast accept only value bigger than 0";
-    private static final String SINCE_LAST_CONFIG = "change-detector.detect.sinceLast";
-    private static final String TIME_UNIT_CONFIG = "change-detector.detect.timeUnit";
-    private static final String PULL_FROM_DB_CONFIG = "change-detector.loader.pullFromDb";
-    private static final String MAX_AWAIT_IN_SECONDS_CONFIG = "change-detector.loader.maxAwaitInSeconds";
     private static final Logger LOGGER = LoggerFactory.getLogger(InstallationStoreLoader.class);
 
     private final InstallationQuery query;
@@ -40,18 +35,17 @@ class InstallationStoreLoader {
     InstallationStoreLoader(InstallationQuery query,
                             Store<TSFKey, Installation> store,
                             Event<InstallationStoreReady> storeReadyEvent,
-                            @ConfigProperty(name = SINCE_LAST_CONFIG) Integer loadSinceLast,
-                            @ConfigProperty(name = TIME_UNIT_CONFIG) ChronoUnit timeUnit,
-                            @ConfigProperty(name = PULL_FROM_DB_CONFIG) Boolean pullFromDb,
-                            @ConfigProperty(name = MAX_AWAIT_IN_SECONDS_CONFIG, defaultValue = "60") Long maxAwaitInSeconds) {
-        Preconditions.checkArgument(timeUnit == ChronoUnit.DAYS || timeUnit == ChronoUnit.HOURS, TIME_UNIT_VALIDATION_FAILED);
-        Preconditions.checkArgument(loadSinceLast > 0, SINCE_LAST_VALIDATION_FAILED);
+                            ChangeDetectorProperties properties) {
+        Preconditions.checkArgument(
+                properties.getDetect().getTimeUnit() == ChronoUnit.DAYS || properties.getDetect().getTimeUnit() == ChronoUnit.HOURS,
+                TIME_UNIT_VALIDATION_FAILED
+        );
         this.query = query;
         this.store = store;
         this.storeReadyEvent = storeReadyEvent;
-        this.loadSinceLast = Duration.of(loadSinceLast, timeUnit).toHours();
-        this.pullFromDb = pullFromDb;
-        this.maxAwait = Duration.ofSeconds(maxAwaitInSeconds);
+        this.loadSinceLast = properties.getDetect().sinceLastDuration().toHours();
+        this.pullFromDb = properties.getLoader().getPullFromDb();
+        this.maxAwait = Duration.ofSeconds(properties.getLoader().getMaxAwaitInSeconds());
     }
 
     void bootstrapStore(@Observes StartupEvent startup) {

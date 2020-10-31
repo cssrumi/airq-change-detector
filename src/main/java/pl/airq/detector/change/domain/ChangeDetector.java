@@ -17,22 +17,22 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.airq.common.domain.gios.installation.Installation;
-import pl.airq.common.domain.gios.installation.InstallationQuery;
+import pl.airq.common.domain.gios.Installation;
+import pl.airq.common.domain.gios.InstallationQuery;
 import pl.airq.common.process.AppEventBus;
 import pl.airq.common.process.MutinyUtils;
 import pl.airq.common.store.Store;
 import pl.airq.common.store.key.TSFKey;
+import pl.airq.detector.change.config.ChangeDetectorProperties;
+import pl.airq.detector.change.domain.gios.GiosInstallation;
+import pl.airq.detector.change.domain.gios.GiosInstallationEventType;
+import pl.airq.detector.change.domain.gios.GiosInstallationPayload;
 import pl.airq.detector.change.store.InstallationStoreReady;
 
 @ApplicationScoped
 class ChangeDetector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeDetector.class);
-    private static final String SINCE_LAST_CONFIG = "change-detector.detect.sinceLast";
-    private static final String TIME_UNIT_CONFIG = "change-detector.detect.timeUnit";
-    private static final String MAX_PROCESS_AWAIT_CONFIG = "change-detector.detect.maxProcessAwait";
-    private static final String MAX_PROCESS_AWAIT_TIME_UNIT_CONFIG = "change-detector.detect.maxProcessAwaitTimeUnit";
 
     private final AtomicBoolean isStoreReady = new AtomicBoolean(false);
     private final AppEventBus bus;
@@ -42,16 +42,12 @@ class ChangeDetector {
     private final Duration maxProcessAwait;
 
     @Inject
-    public ChangeDetector(AppEventBus bus, Store<TSFKey, Installation> store, InstallationQuery query,
-                          @ConfigProperty(name = SINCE_LAST_CONFIG) Integer loadSinceLast,
-                          @ConfigProperty(name = TIME_UNIT_CONFIG) ChronoUnit timeUnit,
-                          @ConfigProperty(name = MAX_PROCESS_AWAIT_CONFIG) Integer maxProcessAwait,
-                          @ConfigProperty(name = MAX_PROCESS_AWAIT_TIME_UNIT_CONFIG) ChronoUnit maxProcessAwaitTimeUnit) {
+    public ChangeDetector(AppEventBus bus, Store<TSFKey, Installation> store, InstallationQuery query, ChangeDetectorProperties properties) {
         this.bus = bus;
         this.store = store;
         this.query = query;
-        this.detectSinceLast = Duration.of(loadSinceLast, timeUnit).toHours();
-        this.maxProcessAwait = Duration.of(maxProcessAwait, maxProcessAwaitTimeUnit);
+        this.detectSinceLast = properties.getDetect().sinceLastDuration().toHours();
+        this.maxProcessAwait = properties.getDetect().maxProcessAwaitDuration();
     }
 
     void installationStoreReady(@ObservesAsync InstallationStoreReady storeReady) {
@@ -84,7 +80,7 @@ class ChangeDetector {
         processedCount += Multi.createFrom().items(storeState.keySet()::stream)
                                .filter(key -> key.timestamp().isAfter(newOldest))
                                .invokeUni(store::delete)
-                               .invoke(key -> bus.publish(GiosMeasurement.from(GiosMEventType.DELETED, storeState.get(key))))
+                               .invoke(key -> bus.publish(GiosInstallation.from(GiosInstallationEventType.DELETED, storeState.get(key))))
                                .collectItems().with(Collectors.counting())
                                .await().atMost(maxProcessAwait);
 
@@ -106,7 +102,7 @@ class ChangeDetector {
 
     private boolean detectUpdateOrCreated(Installation installation, Installation fromStore) {
         if (fromStore == null && installation != null) {
-            bus.publish(new GiosMeasurement(new GiosMeasurementPayload(GiosMEventType.CREATED, installation)));
+            bus.publish(GiosInstallation.from(GiosInstallationEventType.CREATED, installation));
             return true;
         }
 
@@ -114,7 +110,7 @@ class ChangeDetector {
             return false;
         }
 
-        bus.publish(new GiosMeasurement(new GiosMeasurementPayload(GiosMEventType.UPDATED, installation)));
+        bus.publish(GiosInstallation.from(GiosInstallationEventType.UPDATED, installation));
         return true;
     }
 }

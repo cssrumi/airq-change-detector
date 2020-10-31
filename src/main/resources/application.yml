@@ -31,19 +31,11 @@ quarkus:
 mp:
   messaging:
     outgoing:
-      gios-m-created:
+      gios-installation:
         connector: smallrye-kafka
-        topic: gios.m.created
-        value:
+        topic: gios.installation
+        key:
           serializer: org.apache.kafka.common.serialization.StringSerializer
-      gios-m-updated:
-        connector: smallrye-kafka
-        topic: gios.m.updated
-        value:
-          serializer: org.apache.kafka.common.serialization.StringSerializer
-      gios-m-deleted:
-        connector: smallrye-kafka
-        topic: gios.m.deleted
         value:
           serializer: org.apache.kafka.common.serialization.StringSerializer
 

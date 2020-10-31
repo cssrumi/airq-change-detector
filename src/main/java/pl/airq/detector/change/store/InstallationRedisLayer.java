@@ -18,9 +18,10 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.airq.common.domain.exception.DeserializationException;
-import pl.airq.common.domain.exception.SerializationException;
-import pl.airq.common.domain.gios.installation.Installation;
+
+import pl.airq.common.domain.gios.Installation;
+import pl.airq.common.exception.DeserializationException;
+import pl.airq.common.exception.SerializationException;
 import pl.airq.common.process.AppEventBus;
 import pl.airq.common.process.MutinyUtils;
 import pl.airq.common.process.failure.FailureFactory;
@@ -36,11 +37,11 @@ public class InstallationRedisLayer implements StoreLayer<TSFKey, Installation> 
     private final String expireInSeconds;
 
     public InstallationRedisLayer(ReactiveRedisClient reactiveRedisClient, AppEventBus bus, ObjectMapper mapper,
-                                  Long expireIn, ChronoUnit expireTimeUnit) {
+                                  Duration expireIn) {
         this.reactiveRedisClient = reactiveRedisClient;
         this.bus = bus;
         this.mapper = mapper;
-        this.expireInSeconds = Long.toString(Duration.of(expireIn, expireTimeUnit).toSeconds());
+        this.expireInSeconds = Long.toString(expireIn.toSeconds());
     }
 
     @PostConstruct
