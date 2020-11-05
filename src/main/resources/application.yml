@@ -35,7 +35,7 @@ mp:
         connector: smallrye-kafka
         topic: gios.installation
         key:
-          serializer: org.apache.kafka.common.serialization.StringSerializer
+          serializer: pl.airq.common.kafka.TSKeySerializer
         value:
           serializer: org.apache.kafka.common.serialization.StringSerializer
 
