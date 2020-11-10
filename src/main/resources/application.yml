@@ -2,16 +2,16 @@ change-detector:
   invoke:
     cron: 0 */10 * ? * *
   loader:
-    pullFromDb: false
+    pull-from-db: false # true should be set only first time
   detect:
-    sinceLast: 3
-    timeUnit: DAYS
-    maxProcessAwait: 5
-    maxProcessAwaitTimeUnit: MINUTES
+    since-last: 3
+    time-unit: DAYS
+    max-process-await: 5
+    max-process-await-time-unit: MINUTES
   store:
     expire:
       in: 72
-      timeUnit: HOURS
+      time-unit: HOURS
 
 quarkus:
   application:
@@ -23,8 +23,6 @@ quarkus:
       url: jdbc:postgresql://10.1.1.50:5432/warehouse
     reactive:
       url: postgresql://10.1.1.50:5432/warehouse
-  redis:
-    password:
   vertx:
     prefer-native-transport: true
 
@@ -48,7 +46,9 @@ kafka:
 "%dev":
   change-detector:
     pull:
-      cron: 0 0 * * * ?
+      cron: 0 */2 * ? * *
+    loader:
+      pull-from-db: true
     store:
       expire:
         in: 72
@@ -56,8 +56,19 @@ kafka:
 
   quarkus:
     redis:
-      hosts: localhost:6379
+      hosts: redis://localhost:6379
 
   kafka:
     bootstrap:
       servers: localhost:9092
+
+"%test":
+  quarkus:
+    scheduler:
+      enabled: false
+
+  change-detector:
+    store:
+      expire:
+        in: 5
+        timeUnit: SECONDS

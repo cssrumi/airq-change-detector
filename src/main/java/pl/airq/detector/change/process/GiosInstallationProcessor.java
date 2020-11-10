@@ -22,19 +22,19 @@ import pl.airq.detector.change.domain.gios.GiosInstallationEventType;
 import static pl.airq.detector.change.process.TopicConstants.GIOS_INSTALLATION_TOPIC;
 
 @ApplicationScoped
-class GiosInstallationEventProcessor {
+class GiosInstallationProcessor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GiosInstallationEventProcessor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GiosInstallationProcessor.class);
 
     private final Emitter<String> installationEmitter;
     private final EventParser parser;
     private final String topic;
 
     @Inject
-    GiosInstallationEventProcessor(@OnOverflow(value = OnOverflow.Strategy.BUFFER, bufferSize = 100)
-                                   @Channel("gios-installation") Emitter<String> installationEmitter,
-                                   @ConfigProperty(name = "mp.messaging.outgoing.data-enriched.topic") String topic,
-                                   EventParser parser) {
+    GiosInstallationProcessor(@OnOverflow(value = OnOverflow.Strategy.BUFFER, bufferSize = 100)
+                              @Channel("gios-installation") Emitter<String> installationEmitter,
+                              @ConfigProperty(name = "mp.messaging.outgoing.gios-installation.topic") String topic,
+                              EventParser parser) {
 
         this.parser = parser;
         this.installationEmitter = installationEmitter;
@@ -58,7 +58,6 @@ class GiosInstallationEventProcessor {
                                                              .addMetadata(metadata);
                       installationEmitter.send(message);
                       LOGGER.info("GiosMeasurementEvent type: {} send.", type);
-                  })
-                  .onItem().ignore().andContinueWithNull();
+                  });
     }
 }

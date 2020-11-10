@@ -5,16 +5,16 @@ import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.ObservesAsync;
 import javax.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.airq.common.domain.gios.Installation;
@@ -26,7 +26,6 @@ import pl.airq.common.store.key.TSFKey;
 import pl.airq.detector.change.config.ChangeDetectorProperties;
 import pl.airq.detector.change.domain.gios.GiosInstallation;
 import pl.airq.detector.change.domain.gios.GiosInstallationEventType;
-import pl.airq.detector.change.domain.gios.GiosInstallationPayload;
 import pl.airq.detector.change.store.InstallationStoreReady;
 
 @ApplicationScoped
@@ -56,30 +55,31 @@ class ChangeDetector {
         findChanges();
     }
 
-    @Scheduled(cron = "{change-detector.invoke.cron}")
+    @Scheduled(cron = "{change-detector.pull.cron}")
     void cronInvoker() {
         if (isStoreReady.get()) {
             findChanges();
         }
     }
 
-    private void findChanges() {
+    void findChanges() {
         final OffsetDateTime oldestValid = oldestValid();
         final Predicate<TSFKey> isNotExpired = key -> key.timestamp().isAfter(oldestValid);
         final Map<TSFKey, Installation> storeState = store.getMap(isNotExpired)
                                                           .await().atMost(Duration.ofSeconds(2));
 
         long processedCount = query.getAllWithPMSinceLastNHours(detectSinceLast.intValue())
+                                   .onItem().ifNull().continueWith(Collections::emptySet)
                                    .onItem().transformToMulti(Multi.createFrom()::iterable)
                                    .filter(installation -> installation.timestamp.isAfter(oldestValid))
-                                   .invokeUni(installation -> detectEventAndUpsert(installation, storeState))
+                                   .call(installation -> detectEventAndUpsert(installation, storeState))
                                    .collectItems().with(Collectors.counting())
                                    .await().atMost(maxProcessAwait);
 
         final OffsetDateTime newOldest = oldestValid();
         processedCount += Multi.createFrom().items(storeState.keySet()::stream)
                                .filter(key -> key.timestamp().isAfter(newOldest))
-                               .invokeUni(store::delete)
+                               .call(store::delete)
                                .invoke(key -> bus.publish(GiosInstallation.from(GiosInstallationEventType.DELETED, storeState.get(key))))
                                .collectItems().with(Collectors.counting())
                                .await().atMost(maxProcessAwait);
@@ -95,7 +95,7 @@ class ChangeDetector {
         TSFKey key = TSFKey.from(installation);
         return Uni.createFrom().item(storeState.get(key))
                   .map(fromStore -> detectUpdateOrCreated(installation, fromStore))
-                  .invokeUni(shouldUpsert -> shouldUpsert ? store.upsert(key, installation) : Uni.createFrom().voidItem())
+                  .call(shouldUpsert -> shouldUpsert ? store.upsert(key, installation) : Uni.createFrom().voidItem())
                   .invoke(ignore -> storeState.remove(key))
                   .flatMap(MutinyUtils::ignoreUniResult);
     }

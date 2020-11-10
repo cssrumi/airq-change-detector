@@ -1,4 +1,4 @@
-package pl.airq.detector.change.config;
+package pl.airq.detector.change.store;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.redis.client.reactive.ReactiveRedisClient;
@@ -11,10 +11,10 @@ import pl.airq.common.process.AppEventBus;
 import pl.airq.common.store.Store;
 import pl.airq.common.store.StoreBuilder;
 import pl.airq.common.store.key.TSFKey;
-import pl.airq.detector.change.store.InstallationRedisLayer;
+import pl.airq.detector.change.config.ChangeDetectorProperties;
 
 @Dependent
-public class StoreProvider {
+public class StoreProducer {
 
     @Singleton
     @Produces
