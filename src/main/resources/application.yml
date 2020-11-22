@@ -45,7 +45,7 @@ kafka:
 
 "%dev":
   change-detector:
-    pull:
+    invoke:
       cron: 0 */2 * ? * *
     loader:
       pull-from-db: true

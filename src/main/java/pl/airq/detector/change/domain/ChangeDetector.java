@@ -55,7 +55,7 @@ class ChangeDetector {
         findChanges();
     }
 
-    @Scheduled(cron = "{change-detector.pull.cron}")
+    @Scheduled(cron = "{change-detector.invoke.cron}")
     void cronInvoker() {
         if (isStoreReady.get()) {
             findChanges();
